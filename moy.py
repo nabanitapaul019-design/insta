@@ -14,8 +14,8 @@ BOT_TOKEN = read_token_from_file('token.txt')
 bot = telebot.TeleBot(BOT_TOKEN)
 
 REQUIRED_CHANNEL = '@mrinxdildos'
-BOT_LIST = "https://t.me/MRiNxDiLDOS/92 "
-OWNER_URL = "https://t.me/MrinMoYxCB "
+BOT_LIST = "https://t.me/MRiNxDiLDOS/3 "
+OWNER_URL = "https://t.me/M_o_y_zzz "
 OWNER_IDS = {2007860433}
 CHANNEL_URL = "https://t.me/mrinxdildos "
 
