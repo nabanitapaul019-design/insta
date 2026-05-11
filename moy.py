@@ -11,7 +11,7 @@ def read_token_from_file(file_path):
 
 # Initialize bot with token
 BOT_TOKEN = read_token_from_file('token.txt')
-bot = telebot.TeleBot(BOT_TOKEN, timeout=100)
+bot = telebot.TeleBot(BOT_TOKEN)
 
 REQUIRED_CHANNEL = '@mrinxdildos'
 BOT_LIST = "https://t.me/MRiNxDiLDOS/3 "
