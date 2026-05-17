@@ -28,7 +28,10 @@ bot.remove_webhook()
 # Function to delete message after delay
 def delete_after_delay(chat_id, message_id):
     time.sleep(9)
-    bot.delete_message(chat_id, message_id)
+    try:
+        bot.delete_message(chat_id, message_id)
+    except Exception:
+        pass
 
 def check_user_membership(message):
     try:
@@ -47,7 +50,7 @@ def check_user_membership(message):
                 has_photo = photos.total_count > 0
             except Exception:
                 has_photo = False
-            caption = f"🚨𝗛𝗜 👋 *{message.from_user.first_name}* \n\n‼ 🔒𝗠𝗥𝗶𝗡 𝘅 𝗗𝗶𝗟𝗗𝗢𝗦™ 𝗜𝗡𝗦𝗧𝗔𝗚𝗥𝗔𝗠 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗥 𝗕𝗢𝗧 𝗔𝗖𝗖𝗘𝗦𝗦 𝗗𝗘𝗡𝗜𝗘𝗗 ! 🔒 \n\n🔒 *𝗝𝗼𝗶𝗻 𝗼𝘂𝗿 𝗼𝗳𝗳𝗶𝗰𝗶𝗮𝗹 𝗰𝗵𝗮𝗻𝗻𝗲𝗹 𝘁𝗼 𝘂𝘀𝗲 𝘁𝗵𝗶𝘀 𝗯𝗼𝘁 !* 🔒"
+            caption = f"🚨𝗛𝗜 👋 *{message.from_user.first_name}* \n\n‼ 🔒𝗠𝗥𝗶𝗡 𝘅 𝗗𝗶𝗟𝗗𝗢𝗦™ 𝗜𝗡𝗦𝗧𝗔𝗚𝗥𝗔𝗠 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 𝗕𝗢𝗧 𝗔𝗖𝗖𝗘𝗦𝗦 𝗗𝗘𝗡𝗜𝗘𝗗 ! 🔒 \n\n🔒 *𝗝𝗼𝗶𝗻 𝗼𝘂𝗿 𝗼𝗳𝗳𝗶𝗰𝗶𝗮𝗹 𝗰𝗵𝗮𝗻𝗻𝗲𝗹 𝘁𝗼 𝘂𝘀𝗲 𝘁𝗵𝗶𝘀 𝗯𝗼𝘁 !* 🔒"
             if has_photo:
                 try:
                     photo_file_id = photos.photos[0][0].file_id
@@ -103,7 +106,7 @@ def send_welcome(message):
     markup.add(button3)
 
     welcome_text = (
-        "𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 𝗠𝗥𝗶𝗡 𝘅 𝗗𝗶𝗟𝗗𝗢𝗦™ 𝗜𝗡𝗦𝗧𝗔𝗚𝗥𝗔𝗠 𝗩𝗜𝗗𝗘𝗢 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 𝗕𝗢𝗧\n\n"
+        "𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 𝗠𝗥𝗶𝗡 𝘅 𝗗𝗶𝗟𝗟𝗗𝗢𝗦™ 𝗜𝗡𝗦𝗧𝗔𝗚𝗥𝗔𝗠 𝗩𝗜𝗗𝗘𝗢 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 𝗕𝗢𝗧\n\n"
         " 📎 𝗣𝗹𝗲𝗮𝘀𝗲 𝘀𝗲𝗻𝗱 𝗮 𝘃𝗮𝗹𝗶𝗱 𝗜𝗻𝘀𝘁𝗮𝗴𝗿𝗮𝗺 𝗩𝗶𝗱𝗲𝗼 / 𝗥𝗲𝗲𝗹 𝗹𝗶𝗻𝗸, 𝗜 𝘄𝗶𝗹𝗹 𝗱𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝗶𝘁 𝗳𝗼𝗿 𝘆𝗼𝘂 👀 !\n\n"
     )
 
@@ -153,6 +156,39 @@ def is_instagram_url(url):
     instagram_url_pattern = r"^(https?://)?(www\.)?instagram\.com/.*$"
     return re.match(instagram_url_pattern, url) is not None
 
+def get_video_from_fastvideosave(url):
+    """
+    Attempts to extract video URL from fastvideosave.net
+    Returns direct video URL or None if failed.
+    """
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        # Send request to the service
+        response = requests.get(f"https://fastvideosave.net/?url={url}", headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            html_content = response.text
+            
+            # Regex patterns to find mp4 links in the HTML
+            # Pattern 1: Look for standard http/https mp4 links
+            mp4_match = re.search(r'(https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*)', html_content)
+            
+            if mp4_match:
+                return mp4_match.group(1)
+            
+            # Pattern 2: Sometimes URLs are escaped or in specific JSON blocks within JS
+            # Looking for common video source attributes
+            src_match = re.search(r'src=["\'](https?://[^"\'\.]+\.mp4[^"\']*)["\']', html_content)
+            if src_match:
+                return src_match.group(1)
+                
+        return None
+    except Exception as e:
+        print(f"FastVideoSave extraction error: {e}")
+        return None
+
 @bot.message_handler(func=lambda message: re.match(r"^(https?://)?(www\.)?instagram\.com/.*$", message.text))
 def download_reel_with_caption(message):
     # Check membership
@@ -164,93 +200,109 @@ def download_reel_with_caption(message):
     # Send the processing message instantly
     processing_msg = bot.reply_to(message, "⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗹𝗶𝗻𝗸......")
 
+    video_url = None
+    combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
+    is_fallback = False
+
     try:
-        # Fetch video URL and caption using v2
+        # --- TRY PRIMARY API ---
         api_v2_url = f"https://api.yabes-desu.workers.dev/download/instagram/v2?url={url}"
-        response_v2 = requests.get(api_v2_url)
-
-        # Debug log for v2 API response
-        print(f"API v2 Response: {response_v2.status_code}, {response_v2.text}")
-
-        # Initialize variables
-        video_url = None
-        caption = "No caption available."
+        response_v2 = requests.get(api_v2_url, timeout=10)
 
         if response_v2.status_code == 200:
             data_v2 = response_v2.json()
-
-            # Check if 'data' exists and contains the expected keys
             if 'data' in data_v2:
                 if 'url' in data_v2['data'] and isinstance(data_v2['data']['url'], list) and len(data_v2['data']['url']) > 0:
-                    video_url = data_v2['data']['url'][0]  # Extract the first URL from the list
+                    video_url = data_v2['data']['url'][0]
+                    
+                    # Handle Caption for Primary API
+                    caption_text = "No caption available."
+                    if 'caption' in data_v2['data'] and data_v2['data']['caption']:
+                        caption_text = data_v2['data']['caption']
+                    
+                    if caption_text is None:
+                        caption_text = "No caption available."
+
+                    max_caption_length = 500
+                    if len(caption_text) > max_caption_length:
+                        caption_text = caption_text[:max_caption_length] + "..."
+
+                    footer = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
+                    combined_caption = f"{caption_text}{footer}"
+
+                    if len(combined_caption) > 1024:
+                        caption_text = caption_text[:1024 - len(footer) - 3] + "..."
+                        combined_caption = f"{caption_text}{footer}"
                 else:
-                    bot.reply_to(message, "‼ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗲𝘁𝗰𝗵 𝘃𝗶𝗱𝗲𝗼. 𝗠𝗶𝘀𝘀𝗶𝗻𝗴 𝗼𝗿 𝗶𝗻𝘃𝗮𝗹𝗶𝗱 𝘃𝗶𝗱𝗲𝗼 𝗨𝗥𝗟 𝗶𝗻 𝗔𝗣𝗜 𝗿𝗲𝘀𝗽𝗼𝗻𝘀𝗲.‼")
-                    return
-
-                if 'caption' in data_v2['data'] and data_v2['data']['caption']:
-                    caption = data_v2['data']['caption']
+                    # Primary API returned 200 but no video URL found -> Trigger Fallback
+                    is_fallback = True
             else:
-                bot.reply_to(message, "‼ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗲𝘁𝗰𝗵 𝘃𝗶𝗱𝗲𝗼. 𝗔𝗣𝗜 𝗿𝗲𝘀𝗽𝗼𝗻𝘀𝗲 𝗶𝘀 𝗲𝗺pty 𝗼𝗿 𝗶𝗻𝘃𝗮𝗹𝗶𝗱.‼")
-                return
+                # Primary API returned 200 but invalid structure -> Trigger Fallback
+                is_fallback = True
         else:
-            bot.reply_to(message, f"‼ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗲𝘁𝗰𝗵 𝘃𝗶𝗱𝗲𝗼. 𝗔𝗣𝗜 𝘃𝟐 𝗿𝗲𝘀𝗽𝗼𝗻𝗱𝗲𝗱 𝘄𝗶𝘁𝗵: {response_v2.status_code}‼")
+            # Primary API failed status code -> Trigger Fallback
+            is_fallback = True
+
+    except Exception:
+        # Primary API crashed/timeout -> Trigger Fallback
+        is_fallback = True
+
+    # --- FALLBACK TO FASTVIDEOSAVE IF NEEDED ---
+    if is_fallback:
+        try:
+            # Attempt to get video from backup service
+            backup_video_url = get_video_from_fastvideosave(url)
+            if backup_video_url:
+                video_url = backup_video_url
+                # Use the specific static caption requested for fallback
+                combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
+            else:
+                # Both APIs failed
+                try:
+                    bot.delete_message(processing_msg.chat.id, processing_msg.message_id)
+                except Exception:
+                    pass
+                bot.reply_to(message, "‼ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗲𝘁𝗰𝗵 𝘃𝗶𝗱𝗲𝗼. 𝗣𝗹𝗲𝗮𝘀𝗲 𝘁𝗿𝘆 𝗮𝗴𝗮𝗶𝗻 𝗹𝗮𝘁𝗲𝗿.‼")
+                return
+
+        except Exception as e:
+            try:
+                bot.delete_message(processing_msg.chat.id, processing_msg.message_id)
+            except Exception:
+                pass
+            bot.reply_to(message, f"⚠️ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗽𝗿𝗼𝗰𝗲𝘀𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁 ⚠️ : {str(e)}")
             return
 
-        # Ensure caption is a string and not None
-        if caption is None:
-            caption = "No caption available."
+    # --- SEND VIDEO ---
+    
+    # Ensure caption is UTF-8 safe
+    try:
+        combined_caption = combined_caption.encode('utf-8').decode('utf-8')
+    except Exception:
+        combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
 
-        # Truncate caption to 500 characters (Telegram has a 1024-character limit for captions)
-        max_caption_length = 500  # Leave space for the footer
-        if len(caption) > max_caption_length:
-            caption = caption[:max_caption_length] + "..."
+    # Delete the initial processing message
+    try:
+        bot.delete_message(processing_msg.chat.id, processing_msg.message_id)
+    except Exception:
+        pass
 
-        # Combine video and caption in one message
-        footer = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
-        combined_caption = f"{caption}{footer}"
+    # Send intermediate message
+    progress_msg = bot.reply_to(message, "➖ 𝗩𝗶𝗱𝗲𝗼 𝗙𝗼𝘂𝗻𝗱 ! 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱𝗶𝗻𝗴 ⤵ ")
+    threading.Thread(target=delete_after_delay, args=(progress_msg.chat.id, progress_msg.message_id)).start()
 
-        # Ensure combined caption does not exceed 1024 characters
-        if len(combined_caption) > 1024:
-            # Further truncate the caption to fit within the limit
-            caption = caption[:1024 - len(footer) - 3] + "..."  # Reserve space for footer and ellipsis
-            combined_caption = f"{caption}{footer}"
-
-        # Debug log for combined caption
-        print(f"Combined Caption: {combined_caption}")
-
-        # Delete the processing message
-        try:
-            bot.delete_message(processing_msg.chat.id, processing_msg.message_id)
-        except Exception:
-            pass
-
-        # Send the progress message when the video is found
-        progress_msg = bot.reply_to(message, "➖ 𝗩𝗶𝗱𝗲𝗼 𝗙𝗼𝘂𝗻𝗱 ! 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱𝗶𝗻𝗴 ⤵ ")
-        threading.Thread(target=delete_after_delay, args=(progress_msg.chat.id, progress_msg.message_id)).start()
-
-        # Encode combined caption to UTF-8 to avoid encoding issues
-        try:
-            combined_caption = combined_caption.encode('utf-8').decode('utf-8')
-        except Exception as e:
-            print(f"Encoding error: {str(e)}")
-            combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
-
-        # Send video with caption
-        try:
-            bot.send_video(message.chat.id, video_url, caption=combined_caption)
-        except Exception as e:
-            bot.reply_to(message, f"⚠️ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝘀𝗲𝗻𝗱 𝘃𝗶𝗱𝗲𝗼. 𝗘𝗿𝗿𝗼𝗿 : {str(e)}")
-            return
-
-        # Notify the user that the bot is ready for the next request
-        bot.send_message(
-            message.chat.id,
-            "𝗜 𝗮𝗺 𝗿𝗲𝗮𝗱𝘆 𝗳𝗼 𝘆𝗼 𝗻𝗲𝘅𝘁 𝘃𝗶𝗱𝗲𝗼.... 𝗞𝗶𝗻𝗱𝗹𝘆 𝘀𝗲𝗻𝗱 𝗮 𝘃𝗮𝗹𝗶𝗱 𝗜𝗻𝘀𝘁𝗮𝗴𝗿𝗮𝗺 𝗩𝗶𝗱𝗲𝗼 / 𝗲𝗲𝗹 𝗹𝗶𝗻𝗸, 𝗜 𝘄𝗹𝗹 𝗱𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝗶𝘁 𝗳𝗼𝗿 𝘆𝘂 👀 \n\n[ 𝗕𝗢𝗧 𝗖𝗥𝗘𝗔𝗧𝗘𝗗 𝗕𝗬 > ー @M_o_Y_zZz ]"
-        )
-    except requests.RequestException as e:
-        bot.reply_to(message, f"⚠️ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗰𝗼𝗻𝗻𝗲𝗰𝘁 𝘁𝗼 𝗦𝗲𝗿𝘃𝗲𝗿 ⚠️ : {str(e)}")
+    # Send the video
+    try:
+        bot.send_video(message.chat.id, video_url, caption=combined_caption)
     except Exception as e:
-        bot.reply_to(message, f"⚠️ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗽𝗿𝗼𝗰𝗲𝘀𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁 ⚠️  : {str(e)}")
+        bot.reply_to(message, f"⚠️ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝘀𝗲𝗻𝗱 𝘃𝗶𝗱𝗲𝗼. 𝗘𝗿𝗿𝗼𝗿 : {str(e)}")
+        return
+
+    # Notify the user that the bot is ready for the next request
+    bot.send_message(
+        message.chat.id,
+        "𝗜 𝗮𝗺 𝗿𝗲𝗮𝗱𝘆 𝗳𝗼𝗿 𝘆𝗼𝘂𝗿 𝗻𝗲𝘅𝘁 𝘃𝗶𝗱𝗲𝗼.... 𝗞𝗶𝗻𝗱𝗹𝘆 𝘀𝗲𝗻𝗱 𝗮 𝘃𝗮𝗹𝗶𝗱 𝗜𝗻𝘀𝘁𝗮𝗴𝗿𝗮𝗺 𝗩𝗶𝗱𝗲𝗼 / 𝗿𝗲𝗲𝗹 𝗹𝗶𝗻𝗸, 𝗜 𝘄𝗹𝗹 𝗱𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝗶𝘁 𝗳𝗼𝗿 𝘆𝗼𝘂 👀 \n\n[ 𝗕𝗢𝗧 𝗖𝗥𝗘𝗔𝗧𝗘𝗗 𝗕𝗬 > ー @M_o_Y_zZz ]"
+    )
 
 @bot.message_handler(func=lambda message: not re.match(r"^(https?://)?(www\.)?instagram\.com/.*$", message.text))
 def ignore_message(message):
