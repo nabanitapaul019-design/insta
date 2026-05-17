@@ -1,6 +1,6 @@
-pyTelegramBotAPI
-requests
-python-telegram-bot
-selenium
-webdriver-manager
-
+pyTelegramBotAPI>=4.15.0
+requests>=2.31.0
+selenium>=4.16.0
+webdriver-manager>=4.0.1
+certifi>=2023.11.17
+urllib3>=2.1.0
