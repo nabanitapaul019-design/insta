@@ -4,8 +4,8 @@ import threading
 import time
 import re
 import os
-import sys
-from urllib.parse import urlparse
+import shutil
+from urllib.parse import quote
 
 # Try importing selenium
 try:
@@ -17,10 +17,10 @@ try:
     from selenium.webdriver.chrome.service import Service
     from webdriver_manager.chrome import ChromeDriverManager
     SELENIUM_AVAILABLE = True
-    print("[INFO] Selenium imported successfully")
+    print("[INFO] ✅ Selenium imported successfully")
 except ImportError as e:
     SELENIUM_AVAILABLE = False
-    print(f"[WARNING] Selenium not available: {e}")
+    print(f"[WARNING] ❌ Selenium not available: {e}")
     print("[WARNING] Install with: pip install selenium webdriver-manager")
 
 # Function to read token from file
@@ -50,6 +50,12 @@ DEFAULT_HEADERS = {
 # Delete existing webhook before polling
 bot.remove_webhook()
 
+# Set Chrome binary path if not auto-detected
+chrome_path = shutil.which('chromium-browser') or shutil.which('chromium') or shutil.which('google-chrome')
+if chrome_path:
+    os.environ['CHROME_BIN'] = chrome_path
+    print(f"[INFO] Set CHROME_BIN={chrome_path}")
+
 # Function to delete message after delay
 def delete_after_delay(chat_id, message_id):
     time.sleep(9)
@@ -64,10 +70,10 @@ def check_user_membership(message):
         if user_status not in ["member", "administrator", "creator"]:
             markup = telebot.types.InlineKeyboardMarkup()
             markup.add(
-                telebot.types.InlineKeyboardButton("[➖ 𝟭𝗧 𝗝𝗢𝗜𝗡 𝗛𝗘𝗥 𝗧 𝗨𝗘 𝗠𝗘 ➖]", url=CHANNEL_URL, style="danger")
+                telebot.types.InlineKeyboardButton("[➖ 𝟭𝗦𝗧 𝗝𝗢𝗜𝗡 𝗛𝗘𝗥𝗘 𝗧𝗢 𝗨𝗦𝗘 𝗠𝗘 ➖]", url=CHANNEL_URL, style="danger")
             )
             markup.add(
-                telebot.types.InlineKeyboardButton(text="[➖ | 𝗠 𝘅 𝗗™ 𝗔𝗟𝗟 𝗢𝗧𝗦 | ➖]", url=BOT_LIST, style="primary")
+                telebot.types.InlineKeyboardButton(text="[➖ | 𝗠 𝘅 𝗗™ 𝗔𝗟𝗟 𝗕𝗢𝗧𝗦 | ➖]", url=BOT_LIST, style="primary")
             )
             user_id = message.from_user.id
             try:
@@ -75,7 +81,7 @@ def check_user_membership(message):
                 has_photo = photos.total_count > 0
             except Exception:
                 has_photo = False
-            caption = f"🚨𝗛 👋 *{message.from_user.first_name}* \n\n‼ 🔒𝗠𝗥𝗶𝗡 𝘅 𝗶𝗗𝗦™ 𝗜𝗡𝗧𝗔𝗚𝗥𝗔𝗠 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 𝗢𝗧 𝗔𝗖𝗖𝗦𝗦 𝗗𝗘𝗡𝗘𝗗 ! 🔒 \n\n🔒 *𝗼𝗶𝗻 𝗼𝘂𝗿 𝗳𝗳𝗰𝗮𝗹 𝗵𝗮𝗻𝗻𝗲 𝘁𝗼 𝘂𝘀 𝘁𝗶 𝗯𝗼𝘁 !* 🔒"
+            caption = f"🚨𝗛𝗜 👋 *{message.from_user.first_name}* \n\n‼ 🔒𝗠𝗥𝗶𝗡 𝘅 𝗗𝗶𝗟𝗗𝗢𝗦™ 𝗜𝗡𝗦𝗧𝗔𝗚𝗥𝗔𝗠 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 𝗕𝗢𝗧 𝗔𝗖𝗖𝗘𝗦𝗦 𝗗𝗘𝗡𝗜𝗘𝗗 ! 🔒 \n\n🔒 *𝗝𝗼𝗶𝗻 𝗼𝘂𝗿 𝗼𝗳𝗳𝗶𝗰𝗶𝗮𝗹 𝗰𝗵𝗮𝗻𝗻𝗲𝗹 𝘁𝗼 𝘂𝘀𝗲 𝘁𝗵𝗶𝘀 𝗯𝗼𝘁 !* 🔒"
             if has_photo:
                 try:
                     photo_file_id = photos.photos[0][0].file_id
@@ -105,7 +111,7 @@ def check_user_membership(message):
     except Exception as e:
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(
-            telebot.types.InlineKeyboardButton("[➖ 𝟭𝗧 𝗝𝗢𝗜𝗡 𝗛𝗘𝗥 𝗧 𝗨𝗘 𝗠𝗘 ➖]", url=CHANNEL_URL, style="primary")
+            telebot.types.InlineKeyboardButton("[➖ 𝟭𝗦𝗧 𝗝𝗢𝗜𝗡 𝗛𝗘𝗥𝗘 𝗧𝗢 𝗨𝗦𝗘 𝗠𝗘 ➖]", url=CHANNEL_URL, style="primary")
         )
         bot.send_message(
             message.chat.id,
@@ -123,16 +129,16 @@ def send_welcome(message):
     user_id = message.from_user.id
 
     markup = telebot.types.InlineKeyboardMarkup()
-    button1 = telebot.types.InlineKeyboardButton(text="[➖ 𝗖𝗡𝗧𝗔𝗖𝗧 𝗢𝗪𝗘𝗥 ➖]", url=OWNER_URL, style="primary")
-    button2 = telebot.types.InlineKeyboardButton(text="[➖ 𝗠𝗜𝗡 𝗛𝗔𝗡𝗡𝗘 ➖]", url=CHANNEL_URL, style="danger")
-    button3 = telebot.types.InlineKeyboardButton(text="[➖ | 𝗠 𝘅 ™ 𝗔𝗟𝗟 𝗢𝗦  | ➖]", url=BOT_LIST, style="success")
+    button1 = telebot.types.InlineKeyboardButton(text="[➖ 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗢𝗪𝗡𝗘𝗥 ➖]", url=OWNER_URL, style="primary")
+    button2 = telebot.types.InlineKeyboardButton(text="[➖ 𝗠𝗔𝗜𝗡 𝗖𝗛𝗔𝗡𝗡𝗘𝗟 ➖]", url=CHANNEL_URL, style="danger")
+    button3 = telebot.types.InlineKeyboardButton(text="[➖ | 𝗠 𝘅 𝗗™ 𝗔𝗟𝗟 𝗕𝗢𝗧𝗦  | ➖]", url=BOT_LIST, style="success")
     markup.add(button1)
     markup.add(button2)
     markup.add(button3)
 
     welcome_text = (
-        "𝗪𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 𝗥𝗶𝗡 𝘅 𝗗𝗟𝗗𝗢𝗦™ 𝗜𝗡𝗧𝗔𝗚𝗥𝗔𝗠 𝗩𝗜𝗘 𝗗𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 𝗢𝗧\n\n"
-        " 📎 𝗣𝗹𝗲𝗮𝗲 𝘀𝗻𝗱 𝗮 𝘃𝗹𝗶 𝗜𝘀𝘁𝗮𝗴𝗮𝗺 𝗩𝗶𝗱𝗲𝗼 / 𝗥𝗲𝗲𝗹 𝗶𝗻𝗸, 𝗜 𝘄𝗹𝗹 𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝗶𝘁 𝗳𝗼𝗿 𝘆𝘂 👀 !\n\n"
+        "𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 𝗠𝗥𝗶𝗡 𝘅 𝗗𝗶𝗟𝗗𝗢𝗦™ 𝗜𝗡𝗦𝗧𝗔𝗚𝗥𝗔𝗠 𝗩𝗜𝗗𝗘𝗢 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥 𝗕𝗢𝗧\n\n"
+        " 📎 𝗣𝗹𝗲𝗮𝘀𝗲 𝘀𝗲𝗻𝗱 𝗮 𝘃𝗮𝗹𝗶𝗱 𝗜𝗻𝘀𝘁𝗮𝗴𝗿𝗮𝗺 𝗩𝗶𝗱𝗲𝗼 / 𝗥𝗲𝗲𝗹 𝗹𝗶𝗻𝗸, 𝗜 𝘄𝗶𝗹𝗹 𝗱𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝗶𝘁 𝗳𝗼𝗿 𝘆𝗼𝘂 👀 !\n\n"
     )
 
     try:
@@ -167,7 +173,7 @@ def send_welcome(message):
 
     # Notify owner(s) about new user
     user_name = (message.from_user.username and f"@{message.from_user.username}") or message.from_user.first_name or str(message.from_user.id)
-    notify_text = f"👤 𝗡𝗪 𝗨𝗘 𝗛𝗦 𝗦𝗔𝗥𝗧𝗘𝗗 𝗨𝗥 𝗕𝗢𝗧\n\n 𝗨𝗘𝗥𝗡𝗔𝗠𝗘: {user_name}\n 𝗨𝗦𝗘𝗥 𝗗: {message.from_user.id}"
+    notify_text = f"👤 𝗡𝗘𝗪 𝗨𝗦𝗘𝗥 𝗛𝗔𝗦 𝗦𝗧𝗔𝗥𝗧𝗘𝗗 𝗢𝗨𝗥 𝗕𝗢𝗧\n\n 𝗨𝗦𝗘𝗥𝗡𝗔𝗠𝗘: {user_name}\n 𝗨𝗦𝗘𝗥 𝗜𝗗: {message.from_user.id}"
 
     for owner_id in OWNER_IDS:
         if owner_id != message.from_user.id:
@@ -186,6 +192,65 @@ def _extract_instagram_shortcode(url: str):
     if match:
         return match.group("shortcode")
     return None
+
+def _create_fallback_driver(download_path=None):
+    """Create headless Chrome driver with proper path detection."""
+    if not SELENIUM_AVAILABLE:
+        print("[FALLBACK] ❌ Selenium not available")
+        return None
+    
+    try:
+        if download_path:
+            os.makedirs(download_path, exist_ok=True)
+            download_path = os.path.abspath(download_path)
+        else:
+            download_path = DOWNLOAD_DIR
+            os.makedirs(download_path, exist_ok=True)
+        
+        chrome_options = Options()
+        chrome_options.add_argument('--headless=new')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--disable-gpu')
+        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
+        
+        prefs = {
+            "download.default_directory": download_path,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
+        
+        # Try to find Chromium binary
+        chrome_paths = [
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable',
+            os.environ.get('CHROME_BIN', ''),
+        ]
+        
+        for path in chrome_paths:
+            if path and os.path.exists(path):
+                chrome_options.binary_location = path
+                print(f"[FALLBACK] Using Chromium at: {path}")
+                break
+        
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.set_page_load_timeout(300)
+        driver.set_script_timeout(300)
+        
+        print(f"[FALLBACK] ✅ Driver created successfully")
+        return driver
+        
+    except Exception as e:
+        print(f"[FALLBACK] ❌ Driver creation error: {e}")
+        return None
 
 def download_via_fastvideosave(url: str) -> str:
     """
@@ -211,32 +276,9 @@ def download_via_fastvideosave(url: str) -> str:
                 except:
                     pass
         
-        # Setup Chrome options
-        chrome_options = Options()
-        chrome_options.add_argument('--headless=new')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
-        
-        prefs = {
-            "download.default_directory": DOWNLOAD_DIR,
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-            "safebrowsing.enabled": True
-        }
-        chrome_options.add_experimental_option("prefs", prefs)
-        
-        print("[FALLBACK] Creating Chrome driver...")
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        driver.set_page_load_timeout(300)
-        driver.set_script_timeout(300)
-        
-        print(f"[FALLBACK] Driver created successfully")
+        driver = _create_fallback_driver()
+        if not driver:
+            raise RuntimeError("Failed to create browser driver")
         
         # Navigate to fastvideosave
         print("[FALLBACK] Navigating to fastvideosave.net...")
@@ -369,11 +411,11 @@ def download_reel_with_caption(message):
         return
 
     url = message.text.strip()
-    processing_msg = bot.reply_to(message, "⏳ 𝗣𝗿𝗼𝗲𝘀𝘀𝗶𝗴 𝗼𝗿 𝗿𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗹𝗶𝗻......")
+    processing_msg = bot.reply_to(message, "⏳ 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗹𝗶𝗻𝗸......")
 
     video_url = None
     video_file_path = None
-    combined_caption = "\n\n🎥 𝗛𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝘂𝗲𝘀𝘁𝗲𝗱 𝗲𝗲 👀 𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
+    combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
     use_fallback = False
     fallback_error = None
 
@@ -390,7 +432,6 @@ def download_reel_with_caption(message):
             try:
                 data_v2 = response_v2.json()
                 print(f"[PRIMARY] Response keys: {list(data_v2.keys()) if isinstance(data_v2, dict) else 'Not a dict'}")
-                print(f"[PRIMARY] Full response: {data_v2}")
                 
                 video_url = None
                 
@@ -435,7 +476,7 @@ def download_reel_with_caption(message):
                     if len(caption_text) > max_caption_length:
                         caption_text = caption_text[:max_caption_length] + "..."
                     
-                    footer = "\n\n🎥 𝗲𝗿 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗹 👀 𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
+                    footer = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
                     combined_caption = f"{caption_text}{footer}"
                     
                     if len(combined_caption) > 1024:
@@ -464,16 +505,13 @@ def download_reel_with_caption(message):
             video_file_path = download_via_fastvideosave(url)
             if video_file_path and os.path.exists(video_file_path):
                 # Use the exact static caption you requested for fallback
-                combined_caption = "\n\n🎥 𝗛𝗲𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗹 👀 𝗿𝗼𝘃𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
+                combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
                 print("[FALLBACK] ✅ Successfully downloaded via fastvideosave")
             else:
                 print("[FALLBACK] ❌ Failed to download via fastvideosave")
-                fallback_error = str(e)
         except Exception as e:
             print(f"[FALLBACK] ❌ Exception: {str(e)}")
             fallback_error = str(e)
-            import traceback
-            traceback.print_exc()
 
     # === STEP 3: Final check and send ===
     if not video_url and not video_file_path:
@@ -482,11 +520,7 @@ def download_reel_with_caption(message):
         except Exception:
             pass
         
-        error_msg = "‼ 𝗙𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗲𝘁𝗰𝗵 𝘃𝗱𝗲𝗼. 𝗹𝗲𝗮𝗲 𝘁𝘆 𝗴𝗮𝗶𝗻 𝗮𝗲𝗿.‼"
-        if fallback_error:
-            error_msg += f"\n\nDebug: {fallback_error[:200]}"
-        
-        bot.reply_to(message, error_msg)
+        bot.reply_to(message, "‼ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗲𝘁𝗰𝗵 𝘃𝗶𝗱𝗲𝗼. 𝗣𝗹𝗲𝗮𝘀𝗲 𝘁𝗿𝘆 𝗮𝗴𝗮𝗶𝗻 𝗹𝗮𝘁𝗲𝗿.‼")
         print(f"\n{'='*60}\n")
         return
 
@@ -497,14 +531,14 @@ def download_reel_with_caption(message):
         pass
 
     # Send progress message
-    progress_msg = bot.reply_to(message, "➖ 𝗩𝗶𝗱𝗲𝗼 𝗙𝗼𝘂𝗱 ! 𝗗𝗼𝘄𝗹𝗼𝗮𝗱𝗶𝗻 ⤵ ")
+    progress_msg = bot.reply_to(message, "➖ 𝗩𝗶𝗱𝗲𝗼 𝗙𝗼𝘂𝗻𝗱 ! 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱𝗶𝗻𝗴 ⤵ ")
     threading.Thread(target=delete_after_delay, args=(progress_msg.chat.id, progress_msg.message_id)).start()
 
     # Ensure caption is UTF-8 safe
     try:
         combined_caption = combined_caption.encode('utf-8').decode('utf-8')
     except Exception:
-        combined_caption = "\n\n🎥 𝗲𝗿 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗹 👀 𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
+        combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
 
     # Send the video (from URL or file)
     try:
@@ -525,13 +559,13 @@ def download_reel_with_caption(message):
             bot.send_video(message.chat.id, video_url, caption=combined_caption)
     except Exception as e:
         print(f"[SEND] ❌ Error: {str(e)}")
-        bot.reply_to(message, f"⚠️ 𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝘀𝗲𝗻𝗱 𝘃𝗱𝗲𝗼. 𝗘𝗿𝗿𝗼𝗿 : {str(e)}")
+        bot.reply_to(message, f"⚠️ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝘀𝗲𝗻𝗱 𝘃𝗶𝗱𝗲𝗼. 𝗘𝗿𝗿𝗼𝗿 : {str(e)}")
         return
 
     # Ready message
     bot.send_message(
         message.chat.id,
-        "𝗜 𝗮𝗺 𝗲𝗮𝗱𝘆 𝗳 𝘆𝗼 𝗻𝗲𝘅𝘁 𝗶𝗱𝗲𝗼.... 𝗞𝗶𝗻𝗱𝗹𝘆 𝘀𝗻𝗱 𝗮 𝘃𝗹𝗶 𝗜𝘀𝘁𝗮𝗴𝗮𝗺 𝗶𝗲𝗼 / 𝗲𝗲𝗹 𝗹𝗻𝗸, 𝗜 𝘄𝗹 𝗱𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝗶𝘁 𝗳𝗼𝗿 𝘆 👀 \n\n[ 𝗕𝗢 𝗖𝗥𝗔𝗧𝗘𝗗 𝗬 > ー @M_o_Y_zZz ]"
+        "𝗜 𝗮𝗺 𝗿𝗲𝗮𝗱𝘆 𝗳𝗼 𝘆𝗼 𝗻𝗲𝘅𝘁 𝘃𝗶𝗱𝗲𝗼.... 𝗞𝗶𝗻𝗱𝗹𝘆 𝘀𝗲𝗻𝗱 𝗮 𝘃𝗮𝗹𝗶𝗱 𝗜𝗻𝘀𝘁𝗮𝗴𝗿𝗮𝗺 𝗩𝗶𝗱𝗲𝗼 / 𝗲𝗲𝗹 𝗹𝗶𝗻𝗸, 𝗜 𝘄𝗹𝗹 𝗱𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝗶𝘁 𝗳𝗼𝗿 𝘆𝘂 👀 \n\n[ 𝗕𝗢𝗧 𝗖𝗥𝗘𝗔𝗧𝗘𝗗 𝗕𝗬 > ー @M_o_Y_zZz ]"
     )
     
     print(f"\n{'='*60}\n")
@@ -544,5 +578,6 @@ print("="*60)
 print("🤖 Bot started successfully")
 print(f"Selenium available: {SELENIUM_AVAILABLE}")
 print(f"Download directory: {DOWNLOAD_DIR}")
+print(f"Chrome path detected: {chrome_path or 'Not found'}")
 print("="*60)
 bot.polling()
