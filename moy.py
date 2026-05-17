@@ -22,26 +22,33 @@ except ImportError as e:
     SELENIUM_AVAILABLE = False
     print(f"[WARNING] ❌ Selenium not available: {e}")
 
-# Function to read token from file
 def read_token_from_file(file_path):
-    with open(file_path, 'r') as file:
-        return file.read().strip()
-
-# Initialize bot with token
-def read_token_from_file(file_path):
-    # 1️⃣ First, check environment variable (Railway injects this)
+    # 1️⃣ Check Railway Environment Variable first
     env_token = os.environ.get('BOT_TOKEN')
     if env_token:
         print("[INFO] ✅ Using BOT_TOKEN from environment variable")
         return env_token.strip()
     
-    # 2️ Fallback to file (for local testing)
+    # 2️⃣ Fallback to file (for local testing)
     try:
         with open(file_path, 'r') as file:
-            return file.read().strip()
+            token = file.read().strip()
+            if token:
+                print("[INFO] ✅ Using BOT_TOKEN from token.txt")
+                return token
     except FileNotFoundError:
-        raise ValueError("❌ BOT_TOKEN environment variable not set and token.txt not found!")
-bot = telebot.TeleBot
+        pass
+    
+    raise ValueError("❌ CRITICAL ERROR: BOT_TOKEN not found! Set it in Railway Variables.")
+
+try:
+    BOT_TOKEN = read_token_from_file('token.txt')
+except Exception as e:
+    print(f"[CRITICAL] {e}")
+    exit(1)
+
+# Initialize bot instance
+bot = telebot.TeleBot(BOT_TOKEN)
 
 REQUIRED_CHANNEL = '@mrinxdildos'
 BOT_LIST = "https://t.me/MRiNxDiLDOS/3 "
