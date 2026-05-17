@@ -21,7 +21,6 @@ try:
 except ImportError as e:
     SELENIUM_AVAILABLE = False
     print(f"[WARNING] ❌ Selenium not available: {e}")
-    print("[WARNING] Install with: pip install selenium webdriver-manager")
 
 # Function to read token from file
 def read_token_from_file(file_path):
@@ -50,11 +49,40 @@ DEFAULT_HEADERS = {
 # Delete existing webhook before polling
 bot.remove_webhook()
 
-# Set Chrome binary path if not auto-detected
-chrome_path = shutil.which('chromium-browser') or shutil.which('chromium') or shutil.which('google-chrome')
-if chrome_path:
-    os.environ['CHROME_BIN'] = chrome_path
-    print(f"[INFO] Set CHROME_BIN={chrome_path}")
+# === RAILWAY-SPECIFIC: Detect Chrome path ===
+def get_chrome_path():
+    """Get Chromium path for various environments including Railway."""
+    # Check environment variable first
+    if os.environ.get('CHROME_BIN') and os.path.exists(os.environ['CHROME_BIN']):
+        return os.environ['CHROME_BIN']
+    
+    # Common paths for different Linux distros
+    paths = [
+        '/usr/bin/chromium',           # Debian/Ubuntu (Railway)
+        '/usr/bin/chromium-browser',   # Ubuntu
+        '/usr/bin/google-chrome',      # Chrome
+        '/usr/bin/google-chrome-stable',
+        '/snap/bin/chromium',          # Snap
+        '/snap/bin/chromium-browser',
+    ]
+    
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    
+    # Fallback: use shutil.which
+    chrome = shutil.which('chromium') or shutil.which('chromium-browser') or shutil.which('google-chrome')
+    if chrome:
+        return chrome
+    
+    return None
+
+CHROME_PATH = get_chrome_path()
+if CHROME_PATH:
+    os.environ['CHROME_BIN'] = CHROME_PATH
+    print(f"[INFO] ✅ Chrome detected at: {CHROME_PATH}")
+else:
+    print(f"[WARNING] ❌ Chrome NOT found - fallback will fail without it")
 
 # Function to delete message after delay
 def delete_after_delay(chat_id, message_id):
@@ -194,9 +222,13 @@ def _extract_instagram_shortcode(url: str):
     return None
 
 def _create_fallback_driver(download_path=None):
-    """Create headless Chrome driver with proper path detection."""
+    """Create headless Chrome driver - Railway optimized."""
     if not SELENIUM_AVAILABLE:
         print("[FALLBACK] ❌ Selenium not available")
+        return None
+    
+    if not CHROME_PATH:
+        print("[FALLBACK] ❌ Chrome binary not found")
         return None
     
     try:
@@ -209,13 +241,18 @@ def _create_fallback_driver(download_path=None):
         
         chrome_options = Options()
         chrome_options.add_argument('--headless=new')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--no-sandbox')  # Required for Docker/Railway
+        chrome_options.add_argument('--disable-dev-shm-usage')  # Required for Docker/Railway
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--disable-blink-features=AutomationControlled')
         chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        chrome_options.add_argument('--window-size=1920,1080')
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
+        
+        # Set binary location EXPLICITLY
+        chrome_options.binary_location = CHROME_PATH
+        print(f"[FALLBACK] Using Chrome binary: {CHROME_PATH}")
         
         prefs = {
             "download.default_directory": download_path,
@@ -225,22 +262,10 @@ def _create_fallback_driver(download_path=None):
         }
         chrome_options.add_experimental_option("prefs", prefs)
         
-        # Try to find Chromium binary
-        chrome_paths = [
-            '/usr/bin/chromium-browser',
-            '/usr/bin/chromium',
-            '/usr/bin/google-chrome',
-            '/usr/bin/google-chrome-stable',
-            os.environ.get('CHROME_BIN', ''),
-        ]
-        
-        for path in chrome_paths:
-            if path and os.path.exists(path):
-                chrome_options.binary_location = path
-                print(f"[FALLBACK] Using Chromium at: {path}")
-                break
-        
+        # Use webdriver-manager for ChromeDriver
         service = Service(ChromeDriverManager().install())
+        
+        print("[FALLBACK] Initializing Chrome driver...")
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.set_page_load_timeout(300)
         driver.set_script_timeout(300)
@@ -250,15 +275,17 @@ def _create_fallback_driver(download_path=None):
         
     except Exception as e:
         print(f"[FALLBACK] ❌ Driver creation error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def download_via_fastvideosave(url: str) -> str:
-    """
-    Fallback: Download Instagram video via fastvideosave.net using Selenium.
-    Returns path to downloaded file or raises exception.
-    """
+    """Fallback: Download Instagram video via fastvideosave.net using Selenium."""
     if not SELENIUM_AVAILABLE:
-        raise RuntimeError("Selenium is not installed. Please install with: pip install selenium webdriver-manager")
+        raise RuntimeError("Selenium is not installed")
+    
+    if not CHROME_PATH:
+        raise RuntimeError("Chrome browser not found - cannot use Selenium fallback")
     
     shortcode = _extract_instagram_shortcode(url)
     if not shortcode:
@@ -292,7 +319,6 @@ def download_via_fastvideosave(url: str) -> str:
         )
         search_input.clear()
         search_input.send_keys(url)
-        print(f"[FALLBACK] URL entered: {url}")
         
         # Click Download button
         print("[FALLBACK] Clicking Download button...")
@@ -300,40 +326,49 @@ def download_via_fastvideosave(url: str) -> str:
         download_button.click()
         time.sleep(2)
         
-        # Wait for "Download Video" button with specific SVG path
+        # Wait for "Download Video" button
         print("[FALLBACK] Waiting for Download Video button...")
         download_video_button = None
         for i in range(90):
             try:
-                buttons = driver.find_elements(By.CSS_SELECTOR, "button svg path[d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3']")
-                for btn in buttons:
-                    parent = btn.find_element(By.XPATH, "./ancestor::button")
-                    if parent and "Download Video" in parent.text:
-                        download_video_button = parent
-                        print(f"[FALLBACK] Download Video button found!")
-                        break
+                # Try multiple selectors
+                selectors = [
+                    "button svg path[d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3']",
+                    "//button[contains(text(), 'Download Video')]",
+                    "button[data-testid='download-video']",
+                    "a[href*='download'][href*='.mp4']"
+                ]
+                
+                for selector in selectors:
+                    try:
+                        if selector.startswith('//'):
+                            elements = driver.find_elements(By.XPATH, selector)
+                        else:
+                            elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                        
+                        for elem in elements:
+                            if "Download Video".lower() in elem.text.lower() or elem.tag_name == 'a':
+                                download_video_button = elem if elem.tag_name == 'button' else elem.find_element(By.XPATH, "./ancestor::button")
+                                break
+                        if download_video_button:
+                            break
+                    except:
+                        continue
+                
                 if download_video_button:
+                    print(f"[FALLBACK] ✅ Download Video button found!")
                     break
-            except Exception as e:
+            except Exception:
                 pass
-            if i % 5 == 0:
+            
+            if i % 10 == 0 and i > 0:
                 print(f"[FALLBACK] Still searching... ({i}s)")
             time.sleep(1)
         
         if not download_video_button:
-            # Try alternative selector
-            try:
-                buttons = driver.find_elements(By.XPATH, "//button[contains(text(), 'Download Video')]")
-                if buttons:
-                    download_video_button = buttons[0]
-                    print("[FALLBACK] Found button via text search")
-            except:
-                pass
-        
-        if not download_video_button:
             raise RuntimeError("Download Video button not found after 90 seconds")
         
-        # Click the download button
+        # Click and wait for download link
         print("[FALLBACK] Clicking Download Video button...")
         download_video_button.click()
         time.sleep(3)
@@ -343,36 +378,34 @@ def download_via_fastvideosave(url: str) -> str:
         download_link = None
         for i in range(30):
             try:
-                links = driver.find_elements(By.CSS_SELECTOR, "a[href*='.mp4'], a[href*='download']")
+                links = driver.find_elements(By.CSS_SELECTOR, "a[href*='.mp4']")
                 for link in links:
                     href = link.get_attribute('href')
-                    if href and ('.mp4' in href or 'download' in href) and 'fastvideosave' in href:
+                    if href and '.mp4' in href:
                         download_link = href
-                        print(f"[FALLBACK] Found download link: {href[:80]}...")
+                        print(f"[FALLBACK] ✅ Found download link")
                         break
                 if download_link:
                     break
-            except Exception as e:
+            except:
                 pass
-            if i % 5 == 0:
-                print(f"[FALLBACK] Still searching for link... ({i}s)")
             time.sleep(1)
         
-        # Fallback: check current URL if it's a direct .mp4
+        # Fallback: check current URL
         if not download_link:
             current_url = driver.current_url
             if current_url and '.mp4' in current_url:
                 download_link = current_url
-                print(f"[FALLBACK] Using current URL: {current_url[:80]}...")
         
-        driver.quit()
-        driver = None
+        if driver:
+            driver.quit()
+            driver = None
         
         if not download_link:
-            raise RuntimeError("No download link found on page")
+            raise RuntimeError("No download link found")
         
         # Download the file via requests
-        print(f"[FALLBACK] Downloading file via requests...")
+        print(f"[FALLBACK] Downloading file...")
         response = requests.get(download_link, stream=True, timeout=120, headers=DEFAULT_HEADERS)
         response.raise_for_status()
         
@@ -380,23 +413,19 @@ def download_via_fastvideosave(url: str) -> str:
         file_path = os.path.join(DOWNLOAD_DIR, filename)
         
         with open(file_path, "wb") as f:
-            total_downloaded = 0
             for chunk in response.iter_content(chunk_size=256 * 1024):
                 if chunk:
                     f.write(chunk)
-                    total_downloaded += len(chunk)
         
         if os.path.exists(file_path) and os.path.getsize(file_path) > 1000:
             file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
             print(f"[FALLBACK] ✅ Downloaded: {file_path} ({file_size_mb:.2f} MB)")
             return file_path
         
-        raise RuntimeError(f"Downloaded file is empty or too small")
+        raise RuntimeError("Downloaded file is empty")
         
     except Exception as e:
         print(f"[FALLBACK] ❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
         raise
     finally:
         if driver:
@@ -417,167 +446,112 @@ def download_reel_with_caption(message):
     video_file_path = None
     combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
     use_fallback = False
-    fallback_error = None
 
     # === STEP 1: Try Primary API ===
     try:
-        print(f"\n{'='*60}")
-        print(f"[PRIMARY] Requesting: {url}")
         api_v2_url = f"https://api.yabes-desu.workers.dev/download/instagram/v2?url={url}"
         response_v2 = requests.get(api_v2_url, timeout=15)
-        
-        print(f"[PRIMARY] Status: {response_v2.status_code}")
         
         if response_v2.status_code == 200:
             try:
                 data_v2 = response_v2.json()
-                print(f"[PRIMARY] Response keys: {list(data_v2.keys()) if isinstance(data_v2, dict) else 'Not a dict'}")
-                
                 video_url = None
                 
-                # Check multiple possible response structures
-                if (isinstance(data_v2, dict) and 
-                    'data' in data_v2 and 
-                    isinstance(data_v2['data'], dict) and
-                    'url' in data_v2['data'] and 
-                    isinstance(data_v2['data']['url'], list) and 
-                    len(data_v2['data']['url']) > 0):
+                # Check multiple response structures
+                if (isinstance(data_v2, dict) and 'data' in data_v2 and isinstance(data_v2['data'], dict) and
+                    'url' in data_v2['data'] and isinstance(data_v2['data']['url'], list) and len(data_v2['data']['url']) > 0):
                     video_url = data_v2['data']['url'][0]
                     caption_text = data_v2['data'].get('caption') or "No caption available."
-                    print(f"[PRIMARY] ✅ Got video via data.url[0]")
                 
-                elif (isinstance(data_v2, dict) and 
-                      'success' in data_v2 and 
-                      data_v2.get('success') == True and
-                      'url' in data_v2):
+                elif (isinstance(data_v2, dict) and 'success' in data_v2 and data_v2.get('success') == True and 'url' in data_v2):
                     video_url = data_v2['url']
                     caption_text = data_v2.get('caption') or "No caption available."
-                    print(f"[PRIMARY] ✅ Got video via success+url")
                 
-                elif (isinstance(data_v2, dict) and 'video_url' in data_v2):
+                elif isinstance(data_v2, dict) and 'video_url' in data_v2:
                     video_url = data_v2['video_url']
                     caption_text = data_v2.get('caption') or "No caption available."
-                    print(f"[PRIMARY] ✅ Got video via video_url")
-                
-                elif (isinstance(data_v2, dict) and 
-                      'data' in data_v2 and 
-                      isinstance(data_v2['data'], dict) and
-                      'video_url' in data_v2['data']):
-                    video_url = data_v2['data']['video_url']
-                    caption_text = data_v2['data'].get('caption') or "No caption available."
-                    print(f"[PRIMARY] ✅ Got video via data.video_url")
                 
                 if video_url:
-                    # Build caption from primary API
                     if caption_text is None:
                         caption_text = "No caption available."
-                    
                     max_caption_length = 500
                     if len(caption_text) > max_caption_length:
                         caption_text = caption_text[:max_caption_length] + "..."
-                    
                     footer = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
                     combined_caption = f"{caption_text}{footer}"
-                    
                     if len(combined_caption) > 1024:
                         caption_text = caption_text[:1024 - len(footer) - 3] + "..."
                         combined_caption = f"{caption_text}{footer}"
                 else:
-                    print("[PRIMARY] ❌ No valid video URL found in response - triggering fallback")
                     use_fallback = True
-                    
-            except ValueError as e:
-                print(f"[PRIMARY] ❌ JSON decode error: {e} - triggering fallback")
+            except:
                 use_fallback = True
         else:
-            print(f"[PRIMARY] ❌ Non-200 status ({response_v2.status_code}) - triggering fallback")
             use_fallback = True
-            
-    except Exception as e:
-        print(f"[PRIMARY] ❌ Exception: {str(e)} - triggering fallback")
+    except:
         use_fallback = True
 
-    # === STEP 2: Fallback to fastvideosave.net via Selenium ===
+    # === STEP 2: Fallback ===
     if use_fallback or not video_url:
-        print(f"\n{'='*60}")
-        print("[FALLBACK] ========== STARTING FALLBACK ==========")
+        print("[FALLBACK] Attempting fastvideosave.net...")
         try:
-            video_file_path = download_via_fastvideosave(url)
-            if video_file_path and os.path.exists(video_file_path):
-                # Use the exact static caption you requested for fallback
-                combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
-                print("[FALLBACK] ✅ Successfully downloaded via fastvideosave")
+            if CHROME_PATH:
+                video_file_path = download_via_fastvideosave(url)
+                if video_file_path:
+                    combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
             else:
-                print("[FALLBACK] ❌ Failed to download via fastvideosave")
+                print("[FALLBACK] ❌ Chrome not available for Selenium fallback")
         except Exception as e:
-            print(f"[FALLBACK] ❌ Exception: {str(e)}")
-            fallback_error = str(e)
+            print(f"[FALLBACK] ❌ Exception: {e}")
 
-    # === STEP 3: Final check and send ===
+    # === STEP 3: Send ===
     if not video_url and not video_file_path:
         try:
             bot.delete_message(processing_msg.chat.id, processing_msg.message_id)
-        except Exception:
+        except:
             pass
-        
         bot.reply_to(message, "‼ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝗳𝗲𝘁𝗰𝗵 𝘃𝗶𝗱𝗲𝗼. 𝗣𝗹𝗲𝗮𝘀𝗲 𝘁𝗿𝘆 𝗮𝗴𝗮𝗶𝗻 𝗹𝗮𝘁𝗲𝗿.‼")
-        print(f"\n{'='*60}\n")
         return
 
-    # Clean up processing message
     try:
         bot.delete_message(processing_msg.chat.id, processing_msg.message_id)
-    except Exception:
+    except:
         pass
 
-    # Send progress message
     progress_msg = bot.reply_to(message, "➖ 𝗩𝗶𝗱𝗲𝗼 𝗙𝗼𝘂𝗻𝗱 ! 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱𝗶𝗻𝗴 ⤵ ")
     threading.Thread(target=delete_after_delay, args=(progress_msg.chat.id, progress_msg.message_id)).start()
 
-    # Ensure caption is UTF-8 safe
     try:
         combined_caption = combined_caption.encode('utf-8').decode('utf-8')
-    except Exception:
+    except:
         combined_caption = "\n\n🎥 𝗛𝗲𝗿𝗲 𝗶𝘀 𝘆𝗼𝘂𝗿 𝗿𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗥𝗲𝗲𝗹 👀 𝗽𝗿𝗼𝘃𝗶𝗱𝗲𝗱 𝗯𝘆 @instra_dwn_bymrin_bot ❤️\n\n"
 
-    # Send the video (from URL or file)
     try:
         if video_file_path and os.path.exists(video_file_path):
-            # Send from local file (fallback method)
-            print(f"[SEND] Sending from file: {video_file_path}")
             with open(video_file_path, 'rb') as video_file:
                 bot.send_video(message.chat.id, video_file, caption=combined_caption)
-            # Clean up downloaded file
             try:
                 os.remove(video_file_path)
-                print(f"[CLEANUP] Removed: {video_file_path}")
             except:
                 pass
         else:
-            # Send from URL (primary API method)
-            print(f"[SEND] Sending from URL: {video_url[:80]}...")
             bot.send_video(message.chat.id, video_url, caption=combined_caption)
     except Exception as e:
-        print(f"[SEND] ❌ Error: {str(e)}")
         bot.reply_to(message, f"⚠️ 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝘀𝗲𝗻𝗱 𝘃𝗶𝗱𝗲𝗼. 𝗘𝗿𝗿𝗼𝗿 : {str(e)}")
         return
 
-    # Ready message
     bot.send_message(
         message.chat.id,
         "𝗜 𝗮𝗺 𝗿𝗲𝗮𝗱𝘆 𝗳𝗼 𝘆𝗼 𝗻𝗲𝘅𝘁 𝘃𝗶𝗱𝗲𝗼.... 𝗞𝗶𝗻𝗱𝗹𝘆 𝘀𝗲𝗻𝗱 𝗮 𝘃𝗮𝗹𝗶𝗱 𝗜𝗻𝘀𝘁𝗮𝗴𝗿𝗮𝗺 𝗩𝗶𝗱𝗲𝗼 / 𝗲𝗲𝗹 𝗹𝗶𝗻𝗸, 𝗜 𝘄𝗹𝗹 𝗱𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝗶𝘁 𝗳𝗼𝗿 𝘆𝘂 👀 \n\n[ 𝗕𝗢𝗧 𝗖𝗥𝗘𝗔𝗧𝗘𝗗 𝗕𝗬 > ー @M_o_Y_zZz ]"
     )
-    
-    print(f"\n{'='*60}\n")
 
 @bot.message_handler(func=lambda message: not re.match(r"^(https?://)?(www\.)?instagram\.com/.*$", message.text))
 def ignore_message(message):
     pass
 
 print("="*60)
-print("🤖 Bot started successfully")
-print(f"Selenium available: {SELENIUM_AVAILABLE}")
-print(f"Download directory: {DOWNLOAD_DIR}")
-print(f"Chrome path detected: {chrome_path or 'Not found'}")
+print("🤖 Bot started")
+print(f"Selenium: {SELENIUM_AVAILABLE}")
+print(f"Chrome: {CHROME_PATH or 'NOT FOUND'}")
 print("="*60)
 bot.polling()
