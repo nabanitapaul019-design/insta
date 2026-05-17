@@ -41,7 +41,7 @@ def read_token_from_file(file_path):
             return file.read().strip()
     except FileNotFoundError:
         raise ValueError("❌ BOT_TOKEN environment variable not set and token.txt not found!")
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot
 
 REQUIRED_CHANNEL = '@mrinxdildos'
 BOT_LIST = "https://t.me/MRiNxDiLDOS/3 "
