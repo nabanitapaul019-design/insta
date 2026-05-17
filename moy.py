@@ -58,8 +58,6 @@ DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
-# Delete existing webhook before polling
-bot.remove_webhook()
 
 # === RAILWAY-SPECIFIC: Detect Chrome path ===
 def get_chrome_path():
