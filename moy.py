@@ -28,7 +28,19 @@ def read_token_from_file(file_path):
         return file.read().strip()
 
 # Initialize bot with token
-BOT_TOKEN = read_token_from_file('token.txt')
+def read_token_from_file(file_path):
+    # 1️⃣ First, check environment variable (Railway injects this)
+    env_token = os.environ.get('BOT_TOKEN')
+    if env_token:
+        print("[INFO] ✅ Using BOT_TOKEN from environment variable")
+        return env_token.strip()
+    
+    # 2️ Fallback to file (for local testing)
+    try:
+        with open(file_path, 'r') as file:
+            return file.read().strip()
+    except FileNotFoundError:
+        raise ValueError("❌ BOT_TOKEN environment variable not set and token.txt not found!")
 bot = telebot.TeleBot(BOT_TOKEN)
 
 REQUIRED_CHANNEL = '@mrinxdildos'
